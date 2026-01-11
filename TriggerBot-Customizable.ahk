@@ -1,5 +1,5 @@
-﻿#NoEnv
-#Persistent
+﻿#NoEnv 
+#persistent
 #MaxThreadsPerHotkey 2
 #KeyHistory 0
 ListLines Off
@@ -11,145 +11,104 @@ SetWinDelay, -1
 SetControlDelay, -1
 SendMode Input
 CoordMode, Pixel, Screen
-
+SoundBeep, 300, 200
+SoundBeep, 400, 200
+ 
+;===================================================================================
+;CUSTOMIZABLE SETTINGS
+;HOTKEYS & MODES		
+key_hold_mode	:= 	"F2"		; Toggle hold mode (switch between tap and spray)
+key_off		    := 	"F4"		; Turn off all modes
+key_gui_hide	:=	"HOME"		; Hide GUI		
+key_exit	    := 	"END"		; Exit script	
+key_hold	    :=	"XButton2" 	; Key to hold for auto fire	
+key_toggle      :=  "T"         ; Key to toggle triggerbot on/off
+ 
+;SETTINGS
+pixel_box	:=	2.5		    ; Box size for pixel search
+pixel_sens	:=	50		    ; Sensitivity (higher = more forgiving, better performance)
+pixel_color	:=	0xA145A3	    ; Color code to search for (default purple)
+tap_time	:=	10		    ; Delay in MS between shots (tuned for faster clicks)
+spray_mode    := false          ; Spray mode initially off
+ 
+;===================================================================================
+; VARIABLES
+triggerbot_on := false  ; Initially, triggerbot is off
+ 
+; GUI Setup (Upgraded with feedback)
+Gui,2:Font,Cdefault,Fixedsys
+Gui,2:Color,Black
+Gui,2:Color, EEAA99
+Gui,2:Add,Progress, x10 y20 w100 h23 Disabled BackgroundFuchsia vC3
+Gui,2:Add,Text, xp yp wp hp cWhite BackgroundTrans Center 0x200 vB3 gStart,on
+Gui,2:Add,Progress, x10 y20 w100 h23 Disabled BackgroundFuchsia vC2
+Gui,2:Add,Text, xp yp wp hp cWhite BackgroundTrans Center 0x200 vB2 gStart,hold mode
+Gui,2:Add,Progress, x10 y20 w100 h23 Disabled BackgroundFuchsia vC1
+Gui,2:Add,Text, xp yp wp hp cWhite BackgroundTrans Center 0x200 vB1 gStart,AM - off
+Gui,2: Show, x10 y1 w200 h60
+Gui 2:+LastFound +ToolWindow +AlwaysOnTop -Caption
+WinSet, TransColor, EEAA99
+ 
+; Boundaries for pixel scanning
+leftbound:= A_ScreenWidth/2-pixel_box
+rightbound:= A_ScreenWidth/2+pixel_box
+topbound:= A_ScreenHeight/2-pixel_box
+bottombound:= A_ScreenHeight/2+pixel_box 
+ 
+;===================================================================================
 ; HOTKEYS
-key_hold_mode := "alt"
-key_exit := "End"
-key_hold := "XButton2"
-key_config_1 := "Numpad1"
-key_config_2 := "Numpad2"
-key_config_3 := "Numpad3"
-key_config_4 := "Numpad4"
-key_config_5 := "Numpad5"
-
-; SETTINGS
-global pixel_box := 4             ; Keep between min 3 and max 8
-global pixel_sens := 67            ; higher/lower = more/less color sensitive
-global pixel_color := 0xFEFE40     ; yellow="0xFEFE40", purple="0xA145A3"
-global tap_time := 148              ; Default delay in ms between shots when triggered
-global wait_time := 0              ; Default delay in ms before shoots when triggered               
-global clicks := 1                 ; Default flag for clicks config
-global sound_file := "C:\Windows\Media\chimes.wav"
-global waiting := 0
-global allKeysNotPressed := 1
-global noMovementCheck := 1
-
-leftbound := A_ScreenWidth / 2 - pixel_box
-rightbound := A_ScreenWidth / 2 + pixel_box
-topbound := A_ScreenHeight / 2 - pixel_box
-bottombound := A_ScreenHeight / 2 + pixel_box
-
-hotkey, %key_hold_mode%, holdmode_on
+hotkey, %key_hold_mode%, holdmode_toggle   ; Toggle spray/hold mode
+hotkey, %key_off%, offloop
+hotkey, %key_gui_hide%, guihide
 hotkey, %key_exit%, terminate
-hotkey, %key_config_1%, toggleConfig1
-hotkey, %key_config_2%, toggleConfig2
-hotkey, %key_config_3%, toggleConfig3
-hotkey, %key_config_4%, toggleConfig4
-hotkey, %key_config_5%, toggleConfig5
+Hotkey, %key_toggle%, toggle_triggerbot  ; Toggle key for triggerbot
+ 
 return
-
+ 
+;===================================================================================
+; SCRIPT START
 start:
-    SoundBeep, 500, 1000
-    return
-
+gui,2:submit,nohide
 terminate:
-    SoundPlay, off
-    SoundBeep, 500, 500
-    Sleep, 400
-    ExitApp
-    return
-
-holdmode_on:
-    SoundPlay, %sound_file%
-    SetTimer, loop2, 1
-    return
-
-loop2:
-    global waiting, allKeysNotPressed, noMovementCheck
-    key_hold := "XButton2"
-    keys := ["W", "A", "D", "S", "Space"]
-
-    If (GetKeyState(key_hold, "P")) {
-        For index, key in keys {
-            If (GetKeyState(key, "P") && (noMovementCheck = 0)) {
-                allKeysNotPressed := 1
-                break
-            } else {
-                allKeysNotPressed := 0
-            }
-        }
-        
-        If (allKeysNotPressed = 0) {
-            If (waiting = 0) {
-                PixelSearch()
-            }
-        }
-    }
-    return
-
-PixelSearch() {
-    global pixel_box, pixel_sens, pixel_color, tap_time, wait_time, clicks, waiting
-    global FoundX, FoundY, leftbound, topbound, rightbound, bottombound
-    PixelSearch, FoundX, FoundY, leftbound, topbound, rightbound, bottombound, pixel_color, pixel_sens, Fast RGB
-	
-    If (!(ErrorLevel)) {
-        If !GetKeyState("LButton") {
-            waiting := 1
-            sleep %wait_time%
-            ClickWithConfig(tap_time, clicks)
-        }
-    }
-    return
+SoundBeep, 300, 200
+SoundBeep, 200, 200
+Sleep 400
+exitapp
+ 
+;===================================================================================
+; Toggle activation state for the triggerbot
+toggle_triggerbot:
+triggerbot_on := !triggerbot_on  ; Toggle the triggerbot state
+if (triggerbot_on) {
+    SoundBeep, 300, 200
+    SetTimer, checkTriggerbot, 5  ; Set pixel search timer to every 5ms for balance
+} else {
+    SoundBeep, 200, 200
+    Click Up  ; Release the LButton when turning off the triggerbot
+    SetTimer, checkTriggerbot, Off
 }
-
-ClickWithConfig(tap_delay, repeat_count) {
-    global waiting
-    loop %repeat_count% {
-        click
-        sleep %tap_delay%
+return
+ 
+;===================================================================================
+; Toggle spray/hold mode
+holdmode_toggle:
+spray_mode := !spray_mode  ; Toggle between spray and regular tap mode
+if (spray_mode) {
+    SoundBeep, 600, 200
+} else {
+    SoundBeep, 300, 200
+    Click Up  ; Release the LButton when exiting spray mode
+}
+return
+ 
+;===================================================================================
+; MAIN LOOPS
+checkTriggerbot:
+if (triggerbot_on && !KeyCheck()) {  ; Triggerbot only runs when toggle is ON and WASD not pressed
+    if (spray_mode) {
+        HoldSpray()  ; Spray mode: Hold down LButton
+    } else {
+        PixelSearch()  ; Regular tap mode
     }
-    sleep %tap_delay%
-    waiting := 0
-    return
 }
-
-toggleConfig1: ; sheriff, guardian, marshal
-	global noMovementCheck
-    SetConfig(300, 0, 1)
-	noMovementCheck := 1
-    return
-
-toggleConfig2: ; vandal
-	global noMovementCheck
-    SetConfig(110, 0, 2)
-	noMovementCheck := 1
-    return
-
-toggleConfig3: ; awp
-	global noMovementCheck
-    SetConfig(1000, 50, 1)
-	noMovementCheck := 0
-    return
-	
-toggleConfig4: ; pistols
-	global noMovementCheck
-    SetConfig(150, 0, 1)
-	noMovementCheck := 1
-    return
-
-toggleConfig5: ; jett knives
-	global noMovementCheck
-    SetConfig(50, 0, 1)
-	noMovementCheck := 1
-    return
-
-SetConfig(new_tap_time, new_wait_time, new_clicks) {
-    global tap_time, wait_time, clicks, sound_file
-    tap_time := new_tap_time
-    wait_time := new_wait_time
-    clicks := new_clicks
-    SoundPlay, %sound_file%
-    return
-}
-
-
+return
